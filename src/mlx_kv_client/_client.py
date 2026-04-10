@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from types import TracebackType
-from typing import TypedDict
+from typing import TypedDict, cast
 
 import httpx
 
@@ -152,10 +152,10 @@ class MlxKvClient:
         """
         try:
             response = self._http.get("/status")
-        except httpx.ConnectError as exc:
+        except httpx.TransportError as exc:
             raise MlxKvConnectionError(self._base_url, exc) from exc
         response.raise_for_status()
-        return _parse_status(response.json())
+        return _parse_status(cast(_StatusResponse, response.json()))
 
 
 class AsyncMlxKvClient:
@@ -202,7 +202,7 @@ class AsyncMlxKvClient:
         """
         try:
             response = await self._http.get("/status")
-        except httpx.ConnectError as exc:
+        except httpx.TransportError as exc:
             raise MlxKvConnectionError(self._base_url, exc) from exc
         response.raise_for_status()
-        return _parse_status(response.json())
+        return _parse_status(cast(_StatusResponse, response.json()))

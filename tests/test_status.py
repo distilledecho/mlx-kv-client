@@ -105,6 +105,29 @@ def test_status_connection_error_raises_typed_exception() -> None:
     assert exc_info.value.url == "http://localhost:8080"
 
 
+def test_status_timeout_raises_typed_exception() -> None:
+    with patch("httpx.Client.get", side_effect=httpx.TimeoutException("timed out")):
+        client = MlxKvClient("http://localhost:8080")
+        with pytest.raises(MlxKvConnectionError) as exc_info:
+            client.status()
+        client.close()
+
+    assert isinstance(exc_info.value.cause, httpx.TimeoutException)
+
+
+def test_status_http_error_not_wrapped() -> None:
+    """4xx/5xx from raise_for_status() propagates as httpx.HTTPStatusError."""
+    mock_resp = _mock_response(_SAMPLE_RESPONSE)
+    mock_resp.raise_for_status.side_effect = httpx.HTTPStatusError(
+        "500", request=MagicMock(), response=MagicMock()
+    )
+    with patch("httpx.Client.get", return_value=mock_resp):
+        client = MlxKvClient("http://localhost:8080")
+        with pytest.raises(httpx.HTTPStatusError):
+            client.status()
+        client.close()
+
+
 # ---------------------------------------------------------------------------
 # Async client
 # ---------------------------------------------------------------------------
@@ -142,5 +165,22 @@ def test_async_status_connection_error_raises_typed_exception() -> None:
 
         assert "http://localhost:8080" in str(exc_info.value)
         assert isinstance(exc_info.value.cause, httpx.ConnectError)
+
+    asyncio.run(_run())
+
+
+def test_async_status_timeout_raises_typed_exception() -> None:
+    async def _run() -> None:
+        with patch(
+            "httpx.AsyncClient.get",
+            new_callable=AsyncMock,
+            side_effect=httpx.TimeoutException("timed out"),
+        ):
+            client = AsyncMlxKvClient("http://localhost:8080")
+            with pytest.raises(MlxKvConnectionError) as exc_info:
+                await client.status()
+            await client.aclose()
+
+        assert isinstance(exc_info.value.cause, httpx.TimeoutException)
 
     asyncio.run(_run())
