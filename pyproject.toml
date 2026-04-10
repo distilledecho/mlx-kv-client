@@ -12,7 +12,9 @@ classifiers = [
     "Programming Language :: Python :: 3.13",
 ]
 description = "Thin Python HTTP client for mlx-kv-server"
-dependencies = [] # Add project dependencies here, e.g. ["click", "numpy"]
+dependencies = [
+    "httpx>=0.28.1",
+] # Add project dependencies here, e.g. ["click", "numpy"]
 dynamic = ["version"]
 license.file = "LICENSE"
 readme = "README.md"
