@@ -11,10 +11,8 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
 ]
-description = "Thin Python HTTP client for mlx-kv-server"
-dependencies = [
-    "httpx>=0.28.1",
-] # Add project dependencies here, e.g. ["click", "numpy"]
+description = "Thin Python Unix socket client for mlx-kv-server"
+dependencies = [] # stdlib only: socket, asyncio, json
 dynamic = ["version"]
 license.file = "LICENSE"
 readme = "README.md"
@@ -53,6 +51,7 @@ version_file = "src/mlx_kv_client/_version.py"
 [tool.pyright]
 typeCheckingMode = "strict"
 reportMissingImports = false # Ignore missing stubs in imported modules
+pythonPlatform = "Linux"
 
 [tool.pytest.ini_options]
 # Run pytest with all our checkers, and don't spam us with massive tracebacks on error
