@@ -4,6 +4,11 @@
         
         
         
+        
+        
+        
+        
+        
 
 .. automodule:: mlx_kv_client
     :members:
@@ -20,8 +25,13 @@
         :nosignatures:
     
         AsyncMlxKvClient
+        CheckpointResult
+        EvictResult
         KVServerStatus
         MlxKvClient
         MlxKvConnectionError
+        MlxKvServerError
+        PrefillResult
+        RollbackResult
     
     

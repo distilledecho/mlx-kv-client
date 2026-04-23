@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>mlx_kv_client &#8212; mlx-kv-client 0.1.dev5+ga972be315 documentation</title>
+    <title>mlx_kv_client &#8212; mlx-kv-client 0.1.dev8+g1760fd908 documentation</title>
   
   
   
@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=7f76b32a3354e82990f2" />
 <link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=7f76b32a3354e82990f2" />
 
-    <script src="../_static/documentation_options.js?v=cf22b5e1"></script>
+    <script src="../_static/documentation_options.js?v=7c99ccad"></script>
     <script src="../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -485,40 +485,164 @@
 <div class="pst-scrollable-table-container"><table class="autosummary longtable table">
 <tbody>
 <tr class="row-odd"><td><p><a class="reference internal" href="#mlx_kv_client.AsyncMlxKvClient" title="mlx_kv_client.AsyncMlxKvClient"><code class="xref py py-obj docutils literal notranslate"><span class="pre">AsyncMlxKvClient</span></code></a></p></td>
-<td><p>Asynchronous HTTP client for mlx-kv-server.</p></td>
+<td><p>Asynchronous Unix socket client for mlx-kv-server.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#mlx_kv_client.CheckpointResult" title="mlx_kv_client.CheckpointResult"><code class="xref py py-obj docutils literal notranslate"><span class="pre">CheckpointResult</span></code></a></p></td>
+<td><p>Result of a <code class="docutils literal notranslate"><span class="pre">checkpoint</span></code> call.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#mlx_kv_client.EvictResult" title="mlx_kv_client.EvictResult"><code class="xref py py-obj docutils literal notranslate"><span class="pre">EvictResult</span></code></a></p></td>
+<td><p>Result of an <code class="docutils literal notranslate"><span class="pre">evict</span></code> call.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="#mlx_kv_client.KVServerStatus" title="mlx_kv_client.KVServerStatus"><code class="xref py py-obj docutils literal notranslate"><span class="pre">KVServerStatus</span></code></a></p></td>
 <td><p>Read-only snapshot of mlx-kv-server state.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="#mlx_kv_client.MlxKvClient" title="mlx_kv_client.MlxKvClient"><code class="xref py py-obj docutils literal notranslate"><span class="pre">MlxKvClient</span></code></a></p></td>
-<td><p>Synchronous HTTP client for mlx-kv-server.</p></td>
+<td><p>Synchronous Unix socket client for mlx-kv-server.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="#mlx_kv_client.MlxKvConnectionError" title="mlx_kv_client.MlxKvConnectionError"><code class="xref py py-obj docutils literal notranslate"><span class="pre">MlxKvConnectionError</span></code></a></p></td>
 <td><p>Raised when the client cannot reach mlx-kv-server.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#mlx_kv_client.MlxKvServerError" title="mlx_kv_client.MlxKvServerError"><code class="xref py py-obj docutils literal notranslate"><span class="pre">MlxKvServerError</span></code></a></p></td>
+<td><p>Raised when mlx-kv-server returns an error frame.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#mlx_kv_client.PrefillResult" title="mlx_kv_client.PrefillResult"><code class="xref py py-obj docutils literal notranslate"><span class="pre">PrefillResult</span></code></a></p></td>
+<td><p>Result of a <code class="docutils literal notranslate"><span class="pre">prefill</span></code> call.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#mlx_kv_client.RollbackResult" title="mlx_kv_client.RollbackResult"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RollbackResult</span></code></a></p></td>
+<td><p>Result of a <code class="docutils literal notranslate"><span class="pre">rollback</span></code> call.</p></td>
 </tr>
 </tbody>
 </table>
 </div>
 <dl class="py class">
 <dt class="sig sig-object py" id="mlx_kv_client.AsyncMlxKvClient">
-<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">mlx_kv_client.</span></span><span class="sig-name descname"><span class="pre">AsyncMlxKvClient</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">base_url</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/mlx_kv_client/_client.html#AsyncMlxKvClient"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mlx_kv_client.AsyncMlxKvClient" title="Link to this definition">#</a></dt>
-<dd><p>Asynchronous HTTP client for mlx-kv-server.</p>
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">mlx_kv_client.</span></span><span class="sig-name descname"><span class="pre">AsyncMlxKvClient</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">socket_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/mlx_kv_client/_client.html#AsyncMlxKvClient"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mlx_kv_client.AsyncMlxKvClient" title="Link to this definition">#</a></dt>
+<dd><p>Asynchronous Unix socket client for mlx-kv-server.</p>
+<p>Each method opens a fresh connection, sends one request, reads the
+response, then closes the connection.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>base_url</strong> – Base URL of the running mlx-kv-server instance,
-e.g. <code class="docutils literal notranslate"><span class="pre">&quot;http://localhost:8080&quot;</span></code>.</p>
+<dd class="field-odd"><p><strong>socket_path</strong> – Filesystem path to the Unix domain socket of the running
+mlx-kv-server instance.</p>
 </dd>
 </dl>
 <dl class="py method">
 <dt class="sig sig-object py" id="mlx_kv_client.AsyncMlxKvClient.aclose">
 <span class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">aclose</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../_modules/mlx_kv_client/_client.html#AsyncMlxKvClient.aclose"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mlx_kv_client.AsyncMlxKvClient.aclose" title="Link to this definition">#</a></dt>
-<dd><p>Close the underlying HTTP connection pool.</p>
+<dd><p>No-op. Connections are per-call and close themselves.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mlx_kv_client.AsyncMlxKvClient.prefill">
+<span class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">prefill</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tokens</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cache_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#mlx_kv_client.PrefillResult" title="mlx_kv_client._client.PrefillResult"><span class="pre">PrefillResult</span></a></span></span><a class="reference internal" href="../_modules/mlx_kv_client/_client.html#AsyncMlxKvClient.prefill"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mlx_kv_client.AsyncMlxKvClient.prefill" title="Link to this definition">#</a></dt>
+<dd><p>Feed tokens into the KV cache.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>tokens</strong> – Token IDs to prefill.</p></li>
+<li><p><strong>cache_id</strong> – Opaque cache handle. A new cache is created if not yet known.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Contains <code class="docutils literal notranslate"><span class="pre">handle</span></code> — the opaque cache reference.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#mlx_kv_client.PrefillResult" title="mlx_kv_client.PrefillResult">PrefillResult</a></p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="#mlx_kv_client.MlxKvConnectionError" title="mlx_kv_client.MlxKvConnectionError"><strong>MlxKvConnectionError</strong></a> – If the server cannot be reached.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mlx_kv_client.AsyncMlxKvClient.generate">
+<span class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">generate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tokens</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cache_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.AsyncGenerator" title="(in Python v3.14)"><span class="pre">AsyncGenerator</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../_modules/mlx_kv_client/_client.html#AsyncMlxKvClient.generate"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mlx_kv_client.AsyncMlxKvClient.generate" title="Link to this definition">#</a></dt>
+<dd><p>Stream generated tokens from the KV cache.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>tokens</strong> – Prompt tokens for this generation turn.</p></li>
+<li><p><strong>cache_id</strong> – Opaque cache handle (must already exist from a prior prefill).</p></li>
+</ul>
+</dd>
+<dt class="field-even">Yields<span class="colon">:</span></dt>
+<dd class="field-even"><p><em>int</em> – Generated token IDs, one at a time, until the server sends
+<code class="docutils literal notranslate"><span class="pre">done</span></code>.</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#mlx_kv_client.MlxKvConnectionError" title="mlx_kv_client.MlxKvConnectionError"><strong>MlxKvConnectionError</strong></a> – If the server cannot be reached or drops the connection mid-stream.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mlx_kv_client.AsyncMlxKvClient.checkpoint">
+<span class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">checkpoint</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cache_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#mlx_kv_client.CheckpointResult" title="mlx_kv_client._client.CheckpointResult"><span class="pre">CheckpointResult</span></a></span></span><a class="reference internal" href="../_modules/mlx_kv_client/_client.html#AsyncMlxKvClient.checkpoint"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mlx_kv_client.AsyncMlxKvClient.checkpoint" title="Link to this definition">#</a></dt>
+<dd><p>Snapshot the current KV cache state.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>cache_id</strong> – Opaque cache handle.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Contains <code class="docutils literal notranslate"><span class="pre">position</span></code> — token count at checkpoint time.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#mlx_kv_client.CheckpointResult" title="mlx_kv_client.CheckpointResult">CheckpointResult</a></p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="#mlx_kv_client.MlxKvConnectionError" title="mlx_kv_client.MlxKvConnectionError"><strong>MlxKvConnectionError</strong></a> – If the server cannot be reached.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mlx_kv_client.AsyncMlxKvClient.rollback">
+<span class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">rollback</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cache_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">position</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#mlx_kv_client.RollbackResult" title="mlx_kv_client._client.RollbackResult"><span class="pre">RollbackResult</span></a></span></span><a class="reference internal" href="../_modules/mlx_kv_client/_client.html#AsyncMlxKvClient.rollback"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mlx_kv_client.AsyncMlxKvClient.rollback" title="Link to this definition">#</a></dt>
+<dd><p>Restore the KV cache to a prior position.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>cache_id</strong> – Opaque cache handle.</p></li>
+<li><p><strong>position</strong> – Token position to restore to (from a prior checkpoint).</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Contains <code class="docutils literal notranslate"><span class="pre">position</span></code> — the restored token position.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#mlx_kv_client.RollbackResult" title="mlx_kv_client.RollbackResult">RollbackResult</a></p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="#mlx_kv_client.MlxKvConnectionError" title="mlx_kv_client.MlxKvConnectionError"><strong>MlxKvConnectionError</strong></a> – If the server cannot be reached.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mlx_kv_client.AsyncMlxKvClient.evict">
+<span class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">evict</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cache_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#mlx_kv_client.EvictResult" title="mlx_kv_client._client.EvictResult"><span class="pre">EvictResult</span></a></span></span><a class="reference internal" href="../_modules/mlx_kv_client/_client.html#AsyncMlxKvClient.evict"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mlx_kv_client.AsyncMlxKvClient.evict" title="Link to this definition">#</a></dt>
+<dd><p>Free GPU memory for a cache slot.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>cache_id</strong> – Opaque cache handle to remove.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Contains <code class="docutils literal notranslate"><span class="pre">freed</span></code> — the cache ID that was freed.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#mlx_kv_client.EvictResult" title="mlx_kv_client.EvictResult">EvictResult</a></p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="#mlx_kv_client.MlxKvConnectionError" title="mlx_kv_client.MlxKvConnectionError"><strong>MlxKvConnectionError</strong></a> – If the server cannot be reached.</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="mlx_kv_client.AsyncMlxKvClient.status">
 <span class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">status</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#mlx_kv_client.KVServerStatus" title="mlx_kv_client._client.KVServerStatus"><span class="pre">KVServerStatus</span></a></span></span><a class="reference internal" href="../_modules/mlx_kv_client/_client.html#AsyncMlxKvClient.status"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mlx_kv_client.AsyncMlxKvClient.status" title="Link to this definition">#</a></dt>
-<dd><p>Return the current KV cache status from <code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/status</span></code>.</p>
+<dd><p>Return the current KV cache status.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns<span class="colon">:</span></dt>
 <dd class="field-odd"><p>Frozen dataclass snapshot of server state.</p>
@@ -528,6 +652,40 @@ e.g. <code class="docutils literal notranslate"><span class="pre">&quot;http://l
 </dd>
 <dt class="field-odd">Raises<span class="colon">:</span></dt>
 <dd class="field-odd"><p><a class="reference internal" href="#mlx_kv_client.MlxKvConnectionError" title="mlx_kv_client.MlxKvConnectionError"><strong>MlxKvConnectionError</strong></a> – If the server cannot be reached.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="mlx_kv_client.CheckpointResult">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">mlx_kv_client.</span></span><span class="sig-name descname"><span class="pre">CheckpointResult</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">position</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/mlx_kv_client/_client.html#CheckpointResult"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mlx_kv_client.CheckpointResult" title="Link to this definition">#</a></dt>
+<dd><p>Result of a <code class="docutils literal notranslate"><span class="pre">checkpoint</span></code> call.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="mlx_kv_client.CheckpointResult.position">
+<span class="sig-name descname"><span class="pre">position</span></span><a class="headerlink" href="#mlx_kv_client.CheckpointResult.position" title="Link to this definition">#</a></dt>
+<dd><p>Token count at the time the checkpoint was taken.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)">int</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="mlx_kv_client.EvictResult">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">mlx_kv_client.</span></span><span class="sig-name descname"><span class="pre">EvictResult</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">freed</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/mlx_kv_client/_client.html#EvictResult"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mlx_kv_client.EvictResult" title="Link to this definition">#</a></dt>
+<dd><p>Result of an <code class="docutils literal notranslate"><span class="pre">evict</span></code> call.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="mlx_kv_client.EvictResult.freed">
+<span class="sig-name descname"><span class="pre">freed</span></span><a class="headerlink" href="#mlx_kv_client.EvictResult.freed" title="Link to this definition">#</a></dt>
+<dd><p>The <code class="docutils literal notranslate"><span class="pre">cache_id</span></code> that was freed.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a></p>
 </dd>
 </dl>
 </dd></dl>
@@ -644,24 +802,133 @@ e.g. <code class="docutils literal notranslate"><span class="pre">&quot;http://l
 
 <dl class="py class">
 <dt class="sig sig-object py" id="mlx_kv_client.MlxKvClient">
-<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">mlx_kv_client.</span></span><span class="sig-name descname"><span class="pre">MlxKvClient</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">base_url</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/mlx_kv_client/_client.html#MlxKvClient"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mlx_kv_client.MlxKvClient" title="Link to this definition">#</a></dt>
-<dd><p>Synchronous HTTP client for mlx-kv-server.</p>
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">mlx_kv_client.</span></span><span class="sig-name descname"><span class="pre">MlxKvClient</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">socket_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/mlx_kv_client/_client.html#MlxKvClient"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mlx_kv_client.MlxKvClient" title="Link to this definition">#</a></dt>
+<dd><p>Synchronous Unix socket client for mlx-kv-server.</p>
+<p>Each method opens a fresh connection, sends one request, reads the
+response, then closes the connection.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>base_url</strong> – Base URL of the running mlx-kv-server instance,
-e.g. <code class="docutils literal notranslate"><span class="pre">&quot;http://localhost:8080&quot;</span></code>.</p>
+<dd class="field-odd"><p><strong>socket_path</strong> – Filesystem path to the Unix domain socket of the running
+mlx-kv-server instance.</p>
 </dd>
 </dl>
 <dl class="py method">
 <dt class="sig sig-object py" id="mlx_kv_client.MlxKvClient.close">
 <span class="sig-name descname"><span class="pre">close</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../_modules/mlx_kv_client/_client.html#MlxKvClient.close"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mlx_kv_client.MlxKvClient.close" title="Link to this definition">#</a></dt>
-<dd><p>Close the underlying HTTP connection pool.</p>
+<dd><p>No-op. Connections are per-call and close themselves.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mlx_kv_client.MlxKvClient.prefill">
+<span class="sig-name descname"><span class="pre">prefill</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tokens</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cache_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#mlx_kv_client.PrefillResult" title="mlx_kv_client._client.PrefillResult"><span class="pre">PrefillResult</span></a></span></span><a class="reference internal" href="../_modules/mlx_kv_client/_client.html#MlxKvClient.prefill"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mlx_kv_client.MlxKvClient.prefill" title="Link to this definition">#</a></dt>
+<dd><p>Feed tokens into the KV cache.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>tokens</strong> – Token IDs to prefill.</p></li>
+<li><p><strong>cache_id</strong> – Opaque cache handle. A new cache is created if not yet known.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Contains <code class="docutils literal notranslate"><span class="pre">handle</span></code> — the opaque cache reference.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#mlx_kv_client.PrefillResult" title="mlx_kv_client.PrefillResult">PrefillResult</a></p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="#mlx_kv_client.MlxKvConnectionError" title="mlx_kv_client.MlxKvConnectionError"><strong>MlxKvConnectionError</strong></a> – If the server cannot be reached.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mlx_kv_client.MlxKvClient.generate">
+<span class="sig-name descname"><span class="pre">generate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tokens</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cache_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Iterator" title="(in Python v3.14)"><span class="pre">Iterator</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../_modules/mlx_kv_client/_client.html#MlxKvClient.generate"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mlx_kv_client.MlxKvClient.generate" title="Link to this definition">#</a></dt>
+<dd><p>Stream generated tokens from the KV cache.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>tokens</strong> – Prompt tokens for this generation turn.</p></li>
+<li><p><strong>cache_id</strong> – Opaque cache handle (must already exist from a prior prefill).</p></li>
+</ul>
+</dd>
+<dt class="field-even">Yields<span class="colon">:</span></dt>
+<dd class="field-even"><p><em>int</em> – Generated token IDs, one at a time, until the server sends
+<code class="docutils literal notranslate"><span class="pre">done</span></code>.</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#mlx_kv_client.MlxKvConnectionError" title="mlx_kv_client.MlxKvConnectionError"><strong>MlxKvConnectionError</strong></a> – If the server cannot be reached or drops the connection mid-stream.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mlx_kv_client.MlxKvClient.checkpoint">
+<span class="sig-name descname"><span class="pre">checkpoint</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cache_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#mlx_kv_client.CheckpointResult" title="mlx_kv_client._client.CheckpointResult"><span class="pre">CheckpointResult</span></a></span></span><a class="reference internal" href="../_modules/mlx_kv_client/_client.html#MlxKvClient.checkpoint"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mlx_kv_client.MlxKvClient.checkpoint" title="Link to this definition">#</a></dt>
+<dd><p>Snapshot the current KV cache state.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>cache_id</strong> – Opaque cache handle.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Contains <code class="docutils literal notranslate"><span class="pre">position</span></code> — token count at checkpoint time.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#mlx_kv_client.CheckpointResult" title="mlx_kv_client.CheckpointResult">CheckpointResult</a></p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="#mlx_kv_client.MlxKvConnectionError" title="mlx_kv_client.MlxKvConnectionError"><strong>MlxKvConnectionError</strong></a> – If the server cannot be reached.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mlx_kv_client.MlxKvClient.rollback">
+<span class="sig-name descname"><span class="pre">rollback</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cache_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">position</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#mlx_kv_client.RollbackResult" title="mlx_kv_client._client.RollbackResult"><span class="pre">RollbackResult</span></a></span></span><a class="reference internal" href="../_modules/mlx_kv_client/_client.html#MlxKvClient.rollback"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mlx_kv_client.MlxKvClient.rollback" title="Link to this definition">#</a></dt>
+<dd><p>Restore the KV cache to a prior position.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>cache_id</strong> – Opaque cache handle.</p></li>
+<li><p><strong>position</strong> – Token position to restore to (from a prior checkpoint).</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Contains <code class="docutils literal notranslate"><span class="pre">position</span></code> — the restored token position.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#mlx_kv_client.RollbackResult" title="mlx_kv_client.RollbackResult">RollbackResult</a></p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="#mlx_kv_client.MlxKvConnectionError" title="mlx_kv_client.MlxKvConnectionError"><strong>MlxKvConnectionError</strong></a> – If the server cannot be reached.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mlx_kv_client.MlxKvClient.evict">
+<span class="sig-name descname"><span class="pre">evict</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cache_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#mlx_kv_client.EvictResult" title="mlx_kv_client._client.EvictResult"><span class="pre">EvictResult</span></a></span></span><a class="reference internal" href="../_modules/mlx_kv_client/_client.html#MlxKvClient.evict"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mlx_kv_client.MlxKvClient.evict" title="Link to this definition">#</a></dt>
+<dd><p>Free GPU memory for a cache slot.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>cache_id</strong> – Opaque cache handle to remove.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Contains <code class="docutils literal notranslate"><span class="pre">freed</span></code> — the cache ID that was freed.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#mlx_kv_client.EvictResult" title="mlx_kv_client.EvictResult">EvictResult</a></p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="#mlx_kv_client.MlxKvConnectionError" title="mlx_kv_client.MlxKvConnectionError"><strong>MlxKvConnectionError</strong></a> – If the server cannot be reached.</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="mlx_kv_client.MlxKvClient.status">
 <span class="sig-name descname"><span class="pre">status</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#mlx_kv_client.KVServerStatus" title="mlx_kv_client._client.KVServerStatus"><span class="pre">KVServerStatus</span></a></span></span><a class="reference internal" href="../_modules/mlx_kv_client/_client.html#MlxKvClient.status"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mlx_kv_client.MlxKvClient.status" title="Link to this definition">#</a></dt>
-<dd><p>Return the current KV cache status from <code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/status</span></code>.</p>
+<dd><p>Return the current KV cache status.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns<span class="colon">:</span></dt>
 <dd class="field-odd"><p>Frozen dataclass snapshot of server state.</p>
@@ -679,18 +946,70 @@ e.g. <code class="docutils literal notranslate"><span class="pre">&quot;http://l
 
 <dl class="py exception">
 <dt class="sig sig-object py" id="mlx_kv_client.MlxKvConnectionError">
-<span class="property"><span class="k"><span class="pre">exception</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">mlx_kv_client.</span></span><span class="sig-name descname"><span class="pre">MlxKvConnectionError</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">url</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">cause</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#Exception" title="(in Python v3.14)"><span class="pre">Exception</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/mlx_kv_client/_client.html#MlxKvConnectionError"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mlx_kv_client.MlxKvConnectionError" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">exception</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">mlx_kv_client.</span></span><span class="sig-name descname"><span class="pre">MlxKvConnectionError</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">socket_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">cause</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#Exception" title="(in Python v3.14)"><span class="pre">Exception</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/mlx_kv_client/_client.html#MlxKvConnectionError"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mlx_kv_client.MlxKvConnectionError" title="Link to this definition">#</a></dt>
 <dd><p>Raised when the client cannot reach mlx-kv-server.</p>
 <dl class="py attribute">
-<dt class="sig sig-object py" id="mlx_kv_client.MlxKvConnectionError.url">
-<span class="sig-name descname"><span class="pre">url</span></span><a class="headerlink" href="#mlx_kv_client.MlxKvConnectionError.url" title="Link to this definition">#</a></dt>
-<dd><p>The base URL that was attempted.</p>
+<dt class="sig sig-object py" id="mlx_kv_client.MlxKvConnectionError.socket_path">
+<span class="sig-name descname"><span class="pre">socket_path</span></span><a class="headerlink" href="#mlx_kv_client.MlxKvConnectionError.socket_path" title="Link to this definition">#</a></dt>
+<dd><p>The Unix socket path that was attempted.</p>
 </dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="mlx_kv_client.MlxKvConnectionError.cause">
 <span class="sig-name descname"><span class="pre">cause</span></span><a class="headerlink" href="#mlx_kv_client.MlxKvConnectionError.cause" title="Link to this definition">#</a></dt>
-<dd><p>The underlying httpx exception.</p>
+<dd><p>The underlying exception.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="mlx_kv_client.MlxKvServerError">
+<span class="property"><span class="k"><span class="pre">exception</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">mlx_kv_client.</span></span><span class="sig-name descname"><span class="pre">MlxKvServerError</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">socket_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">message</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/mlx_kv_client/_client.html#MlxKvServerError"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mlx_kv_client.MlxKvServerError" title="Link to this definition">#</a></dt>
+<dd><p>Raised when mlx-kv-server returns an error frame.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="mlx_kv_client.MlxKvServerError.socket_path">
+<span class="sig-name descname"><span class="pre">socket_path</span></span><a class="headerlink" href="#mlx_kv_client.MlxKvServerError.socket_path" title="Link to this definition">#</a></dt>
+<dd><p>The Unix socket path of the server that returned the error.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="mlx_kv_client.MlxKvServerError.message">
+<span class="sig-name descname"><span class="pre">message</span></span><a class="headerlink" href="#mlx_kv_client.MlxKvServerError.message" title="Link to this definition">#</a></dt>
+<dd><p>The error message string returned by the server.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="mlx_kv_client.PrefillResult">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">mlx_kv_client.</span></span><span class="sig-name descname"><span class="pre">PrefillResult</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">handle</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/mlx_kv_client/_client.html#PrefillResult"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mlx_kv_client.PrefillResult" title="Link to this definition">#</a></dt>
+<dd><p>Result of a <code class="docutils literal notranslate"><span class="pre">prefill</span></code> call.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="mlx_kv_client.PrefillResult.handle">
+<span class="sig-name descname"><span class="pre">handle</span></span><a class="headerlink" href="#mlx_kv_client.PrefillResult.handle" title="Link to this definition">#</a></dt>
+<dd><p>Opaque cache handle — the same value as the <code class="docutils literal notranslate"><span class="pre">cache_id</span></code> passed in.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="mlx_kv_client.RollbackResult">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">mlx_kv_client.</span></span><span class="sig-name descname"><span class="pre">RollbackResult</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">position</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/mlx_kv_client/_client.html#RollbackResult"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mlx_kv_client.RollbackResult" title="Link to this definition">#</a></dt>
+<dd><p>Result of a <code class="docutils literal notranslate"><span class="pre">rollback</span></code> call.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="mlx_kv_client.RollbackResult.position">
+<span class="sig-name descname"><span class="pre">position</span></span><a class="headerlink" href="#mlx_kv_client.RollbackResult.position" title="Link to this definition">#</a></dt>
+<dd><p>Token position the cache was restored to.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)">int</a></p>
+</dd>
+</dl>
 </dd></dl>
 
 </dd></dl>
@@ -747,7 +1066,20 @@ e.g. <code class="docutils literal notranslate"><span class="pre">&quot;http://l
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mlx_kv_client.__version__"><code class="docutils literal notranslate"><span class="pre">__version__</span></code></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mlx_kv_client.AsyncMlxKvClient"><code class="docutils literal notranslate"><span class="pre">AsyncMlxKvClient</span></code></a><ul class="nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mlx_kv_client.AsyncMlxKvClient.aclose"><code class="docutils literal notranslate"><span class="pre">AsyncMlxKvClient.aclose()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mlx_kv_client.AsyncMlxKvClient.prefill"><code class="docutils literal notranslate"><span class="pre">AsyncMlxKvClient.prefill()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mlx_kv_client.AsyncMlxKvClient.generate"><code class="docutils literal notranslate"><span class="pre">AsyncMlxKvClient.generate()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mlx_kv_client.AsyncMlxKvClient.checkpoint"><code class="docutils literal notranslate"><span class="pre">AsyncMlxKvClient.checkpoint()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mlx_kv_client.AsyncMlxKvClient.rollback"><code class="docutils literal notranslate"><span class="pre">AsyncMlxKvClient.rollback()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mlx_kv_client.AsyncMlxKvClient.evict"><code class="docutils literal notranslate"><span class="pre">AsyncMlxKvClient.evict()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mlx_kv_client.AsyncMlxKvClient.status"><code class="docutils literal notranslate"><span class="pre">AsyncMlxKvClient.status()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mlx_kv_client.CheckpointResult"><code class="docutils literal notranslate"><span class="pre">CheckpointResult</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mlx_kv_client.CheckpointResult.position"><code class="docutils literal notranslate"><span class="pre">CheckpointResult.position</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mlx_kv_client.EvictResult"><code class="docutils literal notranslate"><span class="pre">EvictResult</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mlx_kv_client.EvictResult.freed"><code class="docutils literal notranslate"><span class="pre">EvictResult.freed</span></code></a></li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mlx_kv_client.KVServerStatus"><code class="docutils literal notranslate"><span class="pre">KVServerStatus</span></code></a><ul class="nav section-nav flex-column">
@@ -764,12 +1096,30 @@ e.g. <code class="docutils literal notranslate"><span class="pre">&quot;http://l
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mlx_kv_client.MlxKvClient"><code class="docutils literal notranslate"><span class="pre">MlxKvClient</span></code></a><ul class="nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mlx_kv_client.MlxKvClient.close"><code class="docutils literal notranslate"><span class="pre">MlxKvClient.close()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mlx_kv_client.MlxKvClient.prefill"><code class="docutils literal notranslate"><span class="pre">MlxKvClient.prefill()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mlx_kv_client.MlxKvClient.generate"><code class="docutils literal notranslate"><span class="pre">MlxKvClient.generate()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mlx_kv_client.MlxKvClient.checkpoint"><code class="docutils literal notranslate"><span class="pre">MlxKvClient.checkpoint()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mlx_kv_client.MlxKvClient.rollback"><code class="docutils literal notranslate"><span class="pre">MlxKvClient.rollback()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mlx_kv_client.MlxKvClient.evict"><code class="docutils literal notranslate"><span class="pre">MlxKvClient.evict()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mlx_kv_client.MlxKvClient.status"><code class="docutils literal notranslate"><span class="pre">MlxKvClient.status()</span></code></a></li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mlx_kv_client.MlxKvConnectionError"><code class="docutils literal notranslate"><span class="pre">MlxKvConnectionError</span></code></a><ul class="nav section-nav flex-column">
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mlx_kv_client.MlxKvConnectionError.url"><code class="docutils literal notranslate"><span class="pre">MlxKvConnectionError.url</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mlx_kv_client.MlxKvConnectionError.socket_path"><code class="docutils literal notranslate"><span class="pre">MlxKvConnectionError.socket_path</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mlx_kv_client.MlxKvConnectionError.cause"><code class="docutils literal notranslate"><span class="pre">MlxKvConnectionError.cause</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mlx_kv_client.MlxKvServerError"><code class="docutils literal notranslate"><span class="pre">MlxKvServerError</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mlx_kv_client.MlxKvServerError.socket_path"><code class="docutils literal notranslate"><span class="pre">MlxKvServerError.socket_path</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mlx_kv_client.MlxKvServerError.message"><code class="docutils literal notranslate"><span class="pre">MlxKvServerError.message</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mlx_kv_client.PrefillResult"><code class="docutils literal notranslate"><span class="pre">PrefillResult</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mlx_kv_client.PrefillResult.handle"><code class="docutils literal notranslate"><span class="pre">PrefillResult.handle</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mlx_kv_client.RollbackResult"><code class="docutils literal notranslate"><span class="pre">RollbackResult</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mlx_kv_client.RollbackResult.position"><code class="docutils literal notranslate"><span class="pre">RollbackResult.position</span></code></a></li>
 </ul>
 </li>
 </ul>

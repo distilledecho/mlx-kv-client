@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>mlx_kv_client._client &#8212; mlx-kv-client 0.1.dev5+ga972be315 documentation</title>
+    <title>mlx_kv_client._client &#8212; mlx-kv-client 0.1.dev8+g1760fd908 documentation</title>
   
   
   
@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=7f76b32a3354e82990f2" />
 <link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=7f76b32a3354e82990f2" />
 
-    <script src="../../_static/documentation_options.js?v=cf22b5e1"></script>
+    <script src="../../_static/documentation_options.js?v=7c99ccad"></script>
     <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -447,28 +447,41 @@
                 <article class="bd-article">
                   
   <h1>Source code for mlx_kv_client._client</h1><div class="highlight"><pre>
-<span></span><span class="sd">&quot;&quot;&quot;HTTP client for mlx-kv-server.</span>
+<span></span><span class="sd">&quot;&quot;&quot;Unix socket NDJSON client for mlx-kv-server.</span>
 
 <span class="sd">Provides synchronous (:class:`MlxKvClient`) and asynchronous</span>
-<span class="sd">(:class:`AsyncMlxKvClient`) variants for all six server endpoints:</span>
+<span class="sd">(:class:`AsyncMlxKvClient`) variants for all six server methods:</span>
 <span class="sd">``prefill``, ``generate``, ``checkpoint``, ``rollback``, ``evict``,</span>
 <span class="sd">and ``status``.</span>
 <span class="sd">&quot;&quot;&quot;</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
+<span class="kn">import</span><span class="w"> </span><span class="nn">asyncio</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">socket</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">_socket</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">collections.abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">AsyncGenerator</span><span class="p">,</span> <span class="n">Iterator</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">itertools</span><span class="w"> </span><span class="kn">import</span> <span class="n">count</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">types</span><span class="w"> </span><span class="kn">import</span> <span class="n">TracebackType</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TypedDict</span><span class="p">,</span> <span class="n">cast</span>
-
-<span class="kn">import</span><span class="w"> </span><span class="nn">httpx</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span>
 
 <span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
     <span class="s2">&quot;AsyncMlxKvClient&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;CheckpointResult&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;EvictResult&quot;</span><span class="p">,</span>
     <span class="s2">&quot;KVServerStatus&quot;</span><span class="p">,</span>
     <span class="s2">&quot;MlxKvClient&quot;</span><span class="p">,</span>
     <span class="s2">&quot;MlxKvConnectionError&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;MlxKvServerError&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;PrefillResult&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;RollbackResult&quot;</span><span class="p">,</span>
 <span class="p">]</span>
+
+
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># Exceptions</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
 
 
 <div class="viewcode-block" id="MlxKvConnectionError">
@@ -478,17 +491,42 @@
 
 <span class="sd">    Attributes</span>
 <span class="sd">    ----------</span>
-<span class="sd">    url:</span>
-<span class="sd">        The base URL that was attempted.</span>
+<span class="sd">    socket_path:</span>
+<span class="sd">        The Unix socket path that was attempted.</span>
 <span class="sd">    cause:</span>
-<span class="sd">        The underlying httpx exception.</span>
+<span class="sd">        The underlying exception.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">url</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">cause</span><span class="p">:</span> <span class="ne">Exception</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Cannot reach mlx-kv-server at </span><span class="si">{</span><span class="n">url</span><span class="si">!r}</span><span class="s2">: </span><span class="si">{</span><span class="n">cause</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">url</span> <span class="o">=</span> <span class="n">url</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">socket_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">cause</span><span class="p">:</span> <span class="ne">Exception</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Cannot reach mlx-kv-server at </span><span class="si">{</span><span class="n">socket_path</span><span class="si">!r}</span><span class="s2">: </span><span class="si">{</span><span class="n">cause</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">socket_path</span> <span class="o">=</span> <span class="n">socket_path</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">cause</span> <span class="o">=</span> <span class="n">cause</span></div>
 
+
+
+<div class="viewcode-block" id="MlxKvServerError">
+<a class="viewcode-back" href="../../_api/mlx_kv_client.html#mlx_kv_client.MlxKvServerError">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">MlxKvServerError</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Raised when mlx-kv-server returns an error frame.</span>
+
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    socket_path:</span>
+<span class="sd">        The Unix socket path of the server that returned the error.</span>
+<span class="sd">    message:</span>
+<span class="sd">        The error message string returned by the server.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">socket_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">message</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;server error at </span><span class="si">{</span><span class="n">socket_path</span><span class="si">!r}</span><span class="s2">: </span><span class="si">{</span><span class="n">message</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">socket_path</span> <span class="o">=</span> <span class="n">socket_path</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">message</span> <span class="o">=</span> <span class="n">message</span></div>
+
+
+
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># Result dataclasses</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
 
 
 <div class="viewcode-block" id="KVServerStatus">
@@ -535,55 +573,147 @@
 
 
 
-<span class="k">class</span><span class="w"> </span><span class="nc">_StatusResponse</span><span class="p">(</span><span class="n">TypedDict</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Shape of the JSON body returned by ``GET /status``.&quot;&quot;&quot;</span>
+<div class="viewcode-block" id="PrefillResult">
+<a class="viewcode-back" href="../../_api/mlx_kv_client.html#mlx_kv_client.PrefillResult">[docs]</a>
+<span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">PrefillResult</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Result of a ``prefill`` call.</span>
 
-    <span class="n">cache_used_tokens</span><span class="p">:</span> <span class="nb">int</span>
-    <span class="n">cache_capacity_tokens</span><span class="p">:</span> <span class="nb">int</span>
-    <span class="n">cache_used_fraction</span><span class="p">:</span> <span class="nb">float</span>
-    <span class="n">checkpoint_present</span><span class="p">:</span> <span class="nb">bool</span>
-    <span class="n">checkpoint_tokens</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span>
-    <span class="n">last_operation</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span>
-    <span class="n">last_operation_at</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span>
-    <span class="n">model</span><span class="p">:</span> <span class="nb">str</span>
-    <span class="n">uptime_seconds</span><span class="p">:</span> <span class="nb">int</span>
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    handle:</span>
+<span class="sd">        Opaque cache handle — the same value as the ``cache_id`` passed in.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">handle</span><span class="p">:</span> <span class="nb">str</span></div>
 
 
-<span class="k">def</span><span class="w"> </span><span class="nf">_parse_status</span><span class="p">(</span><span class="n">data</span><span class="p">:</span> <span class="n">_StatusResponse</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">KVServerStatus</span><span class="p">:</span>
+
+<div class="viewcode-block" id="CheckpointResult">
+<a class="viewcode-back" href="../../_api/mlx_kv_client.html#mlx_kv_client.CheckpointResult">[docs]</a>
+<span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">CheckpointResult</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Result of a ``checkpoint`` call.</span>
+
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    position:</span>
+<span class="sd">        Token count at the time the checkpoint was taken.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">position</span><span class="p">:</span> <span class="nb">int</span></div>
+
+
+
+<div class="viewcode-block" id="RollbackResult">
+<a class="viewcode-back" href="../../_api/mlx_kv_client.html#mlx_kv_client.RollbackResult">[docs]</a>
+<span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">RollbackResult</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Result of a ``rollback`` call.</span>
+
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    position:</span>
+<span class="sd">        Token position the cache was restored to.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">position</span><span class="p">:</span> <span class="nb">int</span></div>
+
+
+
+<div class="viewcode-block" id="EvictResult">
+<a class="viewcode-back" href="../../_api/mlx_kv_client.html#mlx_kv_client.EvictResult">[docs]</a>
+<span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">EvictResult</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Result of an ``evict`` call.</span>
+
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    freed:</span>
+<span class="sd">        The ``cache_id`` that was freed.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">freed</span><span class="p">:</span> <span class="nb">str</span></div>
+
+
+
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># Internal helpers</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">_SocketReader</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Buffered line reader over a blocking :class:`socket.socket`.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sock</span><span class="p">:</span> <span class="n">_socket</span><span class="o">.</span><span class="n">socket</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_sock</span> <span class="o">=</span> <span class="n">sock</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_buf</span> <span class="o">=</span> <span class="nb">bytearray</span><span class="p">()</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">readline</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bytes</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Read bytes up to the next newline; return without the newline.&quot;&quot;&quot;</span>
+        <span class="k">while</span> <span class="sa">b</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_buf</span><span class="p">:</span>
+            <span class="n">chunk</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sock</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">4096</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">chunk</span><span class="p">:</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_buf</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="ne">OSError</span><span class="p">(</span><span class="s2">&quot;connection closed mid-line&quot;</span><span class="p">)</span>
+                <span class="k">return</span> <span class="sa">b</span><span class="s2">&quot;&quot;</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_buf</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">chunk</span><span class="p">)</span>
+        <span class="n">idx</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_buf</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="sa">b</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">line</span> <span class="o">=</span> <span class="nb">bytes</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_buf</span><span class="p">[:</span><span class="n">idx</span><span class="p">])</span>
+        <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">_buf</span><span class="p">[:</span> <span class="n">idx</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">line</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_check_error</span><span class="p">(</span><span class="n">response</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span> <span class="n">socket_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="k">if</span> <span class="s2">&quot;error&quot;</span> <span class="ow">in</span> <span class="n">response</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">MlxKvServerError</span><span class="p">(</span><span class="n">socket_path</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">response</span><span class="p">[</span><span class="s2">&quot;error&quot;</span><span class="p">]))</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_parse_status</span><span class="p">(</span><span class="n">result</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">KVServerStatus</span><span class="p">:</span>
+    <span class="n">cp</span> <span class="o">=</span> <span class="n">result</span><span class="p">[</span><span class="s2">&quot;checkpoint_tokens&quot;</span><span class="p">]</span>
+    <span class="n">last_op</span> <span class="o">=</span> <span class="n">result</span><span class="p">[</span><span class="s2">&quot;last_operation&quot;</span><span class="p">]</span>
+    <span class="n">last_op_at</span> <span class="o">=</span> <span class="n">result</span><span class="p">[</span><span class="s2">&quot;last_operation_at&quot;</span><span class="p">]</span>
     <span class="k">return</span> <span class="n">KVServerStatus</span><span class="p">(</span>
-        <span class="n">cache_used_tokens</span><span class="o">=</span><span class="n">data</span><span class="p">[</span><span class="s2">&quot;cache_used_tokens&quot;</span><span class="p">],</span>
-        <span class="n">cache_capacity_tokens</span><span class="o">=</span><span class="n">data</span><span class="p">[</span><span class="s2">&quot;cache_capacity_tokens&quot;</span><span class="p">],</span>
-        <span class="n">cache_used_fraction</span><span class="o">=</span><span class="n">data</span><span class="p">[</span><span class="s2">&quot;cache_used_fraction&quot;</span><span class="p">],</span>
-        <span class="n">checkpoint_present</span><span class="o">=</span><span class="n">data</span><span class="p">[</span><span class="s2">&quot;checkpoint_present&quot;</span><span class="p">],</span>
-        <span class="n">checkpoint_tokens</span><span class="o">=</span><span class="n">data</span><span class="p">[</span><span class="s2">&quot;checkpoint_tokens&quot;</span><span class="p">],</span>
-        <span class="n">last_operation</span><span class="o">=</span><span class="n">data</span><span class="p">[</span><span class="s2">&quot;last_operation&quot;</span><span class="p">],</span>
-        <span class="n">last_operation_at</span><span class="o">=</span><span class="n">data</span><span class="p">[</span><span class="s2">&quot;last_operation_at&quot;</span><span class="p">],</span>
-        <span class="n">model</span><span class="o">=</span><span class="n">data</span><span class="p">[</span><span class="s2">&quot;model&quot;</span><span class="p">],</span>
-        <span class="n">uptime_seconds</span><span class="o">=</span><span class="n">data</span><span class="p">[</span><span class="s2">&quot;uptime_seconds&quot;</span><span class="p">],</span>
+        <span class="n">cache_used_tokens</span><span class="o">=</span><span class="nb">int</span><span class="p">(</span><span class="n">result</span><span class="p">[</span><span class="s2">&quot;cache_used_tokens&quot;</span><span class="p">]),</span>
+        <span class="n">cache_capacity_tokens</span><span class="o">=</span><span class="nb">int</span><span class="p">(</span><span class="n">result</span><span class="p">[</span><span class="s2">&quot;cache_capacity_tokens&quot;</span><span class="p">]),</span>
+        <span class="n">cache_used_fraction</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="n">result</span><span class="p">[</span><span class="s2">&quot;cache_used_fraction&quot;</span><span class="p">]),</span>
+        <span class="n">checkpoint_present</span><span class="o">=</span><span class="nb">bool</span><span class="p">(</span><span class="n">result</span><span class="p">[</span><span class="s2">&quot;checkpoint_present&quot;</span><span class="p">]),</span>
+        <span class="n">checkpoint_tokens</span><span class="o">=</span><span class="nb">int</span><span class="p">(</span><span class="n">cp</span><span class="p">)</span> <span class="k">if</span> <span class="n">cp</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">last_operation</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">last_op</span><span class="p">)</span> <span class="k">if</span> <span class="n">last_op</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">last_operation_at</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">last_op_at</span><span class="p">)</span> <span class="k">if</span> <span class="n">last_op_at</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">model</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">result</span><span class="p">[</span><span class="s2">&quot;model&quot;</span><span class="p">]),</span>
+        <span class="n">uptime_seconds</span><span class="o">=</span><span class="nb">int</span><span class="p">(</span><span class="n">result</span><span class="p">[</span><span class="s2">&quot;uptime_seconds&quot;</span><span class="p">]),</span>
     <span class="p">)</span>
+
+
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># Sync client</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
 
 
 <div class="viewcode-block" id="MlxKvClient">
 <a class="viewcode-back" href="../../_api/mlx_kv_client.html#mlx_kv_client.MlxKvClient">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">MlxKvClient</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Synchronous HTTP client for mlx-kv-server.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Synchronous Unix socket client for mlx-kv-server.</span>
+
+<span class="sd">    Each method opens a fresh connection, sends one request, reads the</span>
+<span class="sd">    response, then closes the connection.</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
-<span class="sd">    base_url:</span>
-<span class="sd">        Base URL of the running mlx-kv-server instance,</span>
-<span class="sd">        e.g. ``&quot;http://localhost:8080&quot;``.</span>
+<span class="sd">    socket_path:</span>
+<span class="sd">        Filesystem path to the Unix domain socket of the running</span>
+<span class="sd">        mlx-kv-server instance.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">base_url</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_base_url</span> <span class="o">=</span> <span class="n">base_url</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_http</span> <span class="o">=</span> <span class="n">httpx</span><span class="o">.</span><span class="n">Client</span><span class="p">(</span><span class="n">base_url</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_base_url</span><span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">socket_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_socket_path</span> <span class="o">=</span> <span class="n">socket_path</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_ids</span><span class="p">:</span> <span class="n">Iterator</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="n">count</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
 
 <div class="viewcode-block" id="MlxKvClient.close">
 <a class="viewcode-back" href="../../_api/mlx_kv_client.html#mlx_kv_client.MlxKvClient.close">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">close</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Close the underlying HTTP connection pool.&quot;&quot;&quot;</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_http</span><span class="o">.</span><span class="n">close</span><span class="p">()</span></div>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;No-op. Connections are per-call and close themselves.&quot;&quot;&quot;</span></div>
 
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__enter__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">MlxKvClient</span><span class="p">:</span>
@@ -597,10 +727,199 @@
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
 
+    <span class="c1"># ------------------------------------------------------------------</span>
+    <span class="c1"># Low-level transport</span>
+    <span class="c1"># ------------------------------------------------------------------</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_connect</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">_socket</span><span class="o">.</span><span class="n">socket</span><span class="p">,</span> <span class="n">_SocketReader</span><span class="p">]:</span>
+        <span class="n">sock</span> <span class="o">=</span> <span class="n">_socket</span><span class="o">.</span><span class="n">socket</span><span class="p">(</span><span class="n">_socket</span><span class="o">.</span><span class="n">AF_UNIX</span><span class="p">,</span> <span class="n">_socket</span><span class="o">.</span><span class="n">SOCK_STREAM</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">sock</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_socket_path</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">OSError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+            <span class="n">sock</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+            <span class="k">raise</span> <span class="n">MlxKvConnectionError</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_socket_path</span><span class="p">,</span> <span class="n">exc</span><span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">exc</span>
+        <span class="k">return</span> <span class="n">sock</span><span class="p">,</span> <span class="n">_SocketReader</span><span class="p">(</span><span class="n">sock</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_rpc</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">method</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">params</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+        <span class="n">req_id</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_ids</span><span class="p">)</span>
+        <span class="n">sock</span><span class="p">,</span> <span class="n">reader</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_connect</span><span class="p">()</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">payload</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">({</span><span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="n">req_id</span><span class="p">,</span> <span class="s2">&quot;method&quot;</span><span class="p">:</span> <span class="n">method</span><span class="p">,</span> <span class="s2">&quot;params&quot;</span><span class="p">:</span> <span class="n">params</span><span class="p">})</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+            <span class="n">sock</span><span class="o">.</span><span class="n">sendall</span><span class="p">(</span><span class="n">payload</span><span class="o">.</span><span class="n">encode</span><span class="p">())</span>
+            <span class="n">raw</span> <span class="o">=</span> <span class="n">reader</span><span class="o">.</span><span class="n">readline</span><span class="p">()</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">raw</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">OSError</span><span class="p">(</span><span class="s2">&quot;connection closed before response was received&quot;</span><span class="p">)</span>
+            <span class="n">response</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">raw</span><span class="p">)</span>
+            <span class="n">_check_error</span><span class="p">(</span><span class="n">response</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_socket_path</span><span class="p">)</span>
+            <span class="n">result</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="n">response</span><span class="p">[</span><span class="s2">&quot;result&quot;</span><span class="p">]</span>
+            <span class="k">return</span> <span class="n">result</span>
+        <span class="k">except</span> <span class="ne">OSError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">MlxKvConnectionError</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_socket_path</span><span class="p">,</span> <span class="n">exc</span><span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">exc</span>
+        <span class="k">finally</span><span class="p">:</span>
+            <span class="n">sock</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+    <span class="c1"># ------------------------------------------------------------------</span>
+    <span class="c1"># Public API</span>
+    <span class="c1"># ------------------------------------------------------------------</span>
+
+<div class="viewcode-block" id="MlxKvClient.prefill">
+<a class="viewcode-back" href="../../_api/mlx_kv_client.html#mlx_kv_client.MlxKvClient.prefill">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">prefill</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tokens</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span> <span class="n">cache_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">PrefillResult</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Feed tokens into the KV cache.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        tokens:</span>
+<span class="sd">            Token IDs to prefill.</span>
+<span class="sd">        cache_id:</span>
+<span class="sd">            Opaque cache handle. A new cache is created if not yet known.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        PrefillResult</span>
+<span class="sd">            Contains ``handle`` — the opaque cache reference.</span>
+
+<span class="sd">        Raises</span>
+<span class="sd">        ------</span>
+<span class="sd">        MlxKvConnectionError</span>
+<span class="sd">            If the server cannot be reached.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_rpc</span><span class="p">(</span><span class="s2">&quot;prefill&quot;</span><span class="p">,</span> <span class="p">{</span><span class="s2">&quot;tokens&quot;</span><span class="p">:</span> <span class="n">tokens</span><span class="p">,</span> <span class="s2">&quot;cache_id&quot;</span><span class="p">:</span> <span class="n">cache_id</span><span class="p">})</span>
+        <span class="k">return</span> <span class="n">PrefillResult</span><span class="p">(</span><span class="n">handle</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">result</span><span class="p">[</span><span class="s2">&quot;handle&quot;</span><span class="p">]))</span></div>
+
+
+<div class="viewcode-block" id="MlxKvClient.generate">
+<a class="viewcode-back" href="../../_api/mlx_kv_client.html#mlx_kv_client.MlxKvClient.generate">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">generate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tokens</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span> <span class="n">cache_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Iterator</span><span class="p">[</span><span class="nb">int</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Stream generated tokens from the KV cache.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        tokens:</span>
+<span class="sd">            Prompt tokens for this generation turn.</span>
+<span class="sd">        cache_id:</span>
+<span class="sd">            Opaque cache handle (must already exist from a prior prefill).</span>
+
+<span class="sd">        Yields</span>
+<span class="sd">        ------</span>
+<span class="sd">        int</span>
+<span class="sd">            Generated token IDs, one at a time, until the server sends</span>
+<span class="sd">            ``done``.</span>
+
+<span class="sd">        Raises</span>
+<span class="sd">        ------</span>
+<span class="sd">        MlxKvConnectionError</span>
+<span class="sd">            If the server cannot be reached or drops the connection mid-stream.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">req_id</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_ids</span><span class="p">)</span>
+        <span class="n">sock</span><span class="p">,</span> <span class="n">reader</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_connect</span><span class="p">()</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">payload</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span>
+                    <span class="p">{</span>
+                        <span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="n">req_id</span><span class="p">,</span>
+                        <span class="s2">&quot;method&quot;</span><span class="p">:</span> <span class="s2">&quot;generate&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;params&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;tokens&quot;</span><span class="p">:</span> <span class="n">tokens</span><span class="p">,</span> <span class="s2">&quot;cache_id&quot;</span><span class="p">:</span> <span class="n">cache_id</span><span class="p">},</span>
+                    <span class="p">}</span>
+                <span class="p">)</span>
+                <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+            <span class="n">sock</span><span class="o">.</span><span class="n">sendall</span><span class="p">(</span><span class="n">payload</span><span class="o">.</span><span class="n">encode</span><span class="p">())</span>
+            <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+                <span class="n">raw</span> <span class="o">=</span> <span class="n">reader</span><span class="o">.</span><span class="n">readline</span><span class="p">()</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">raw</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="ne">OSError</span><span class="p">(</span><span class="s2">&quot;connection closed before generate completed&quot;</span><span class="p">)</span>
+                <span class="n">response</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">raw</span><span class="p">)</span>
+                <span class="n">_check_error</span><span class="p">(</span><span class="n">response</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_socket_path</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">response</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;done&quot;</span><span class="p">):</span>
+                    <span class="k">break</span>
+                <span class="k">yield</span> <span class="nb">int</span><span class="p">(</span><span class="n">response</span><span class="p">[</span><span class="s2">&quot;token&quot;</span><span class="p">])</span>
+        <span class="k">except</span> <span class="ne">OSError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">MlxKvConnectionError</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_socket_path</span><span class="p">,</span> <span class="n">exc</span><span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">exc</span>
+        <span class="k">finally</span><span class="p">:</span>
+            <span class="n">sock</span><span class="o">.</span><span class="n">close</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="MlxKvClient.checkpoint">
+<a class="viewcode-back" href="../../_api/mlx_kv_client.html#mlx_kv_client.MlxKvClient.checkpoint">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">checkpoint</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cache_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">CheckpointResult</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Snapshot the current KV cache state.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        cache_id:</span>
+<span class="sd">            Opaque cache handle.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        CheckpointResult</span>
+<span class="sd">            Contains ``position`` — token count at checkpoint time.</span>
+
+<span class="sd">        Raises</span>
+<span class="sd">        ------</span>
+<span class="sd">        MlxKvConnectionError</span>
+<span class="sd">            If the server cannot be reached.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_rpc</span><span class="p">(</span><span class="s2">&quot;checkpoint&quot;</span><span class="p">,</span> <span class="p">{</span><span class="s2">&quot;cache_id&quot;</span><span class="p">:</span> <span class="n">cache_id</span><span class="p">})</span>
+        <span class="k">return</span> <span class="n">CheckpointResult</span><span class="p">(</span><span class="n">position</span><span class="o">=</span><span class="nb">int</span><span class="p">(</span><span class="n">result</span><span class="p">[</span><span class="s2">&quot;position&quot;</span><span class="p">]))</span></div>
+
+
+<div class="viewcode-block" id="MlxKvClient.rollback">
+<a class="viewcode-back" href="../../_api/mlx_kv_client.html#mlx_kv_client.MlxKvClient.rollback">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">rollback</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cache_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">position</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">RollbackResult</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Restore the KV cache to a prior position.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        cache_id:</span>
+<span class="sd">            Opaque cache handle.</span>
+<span class="sd">        position:</span>
+<span class="sd">            Token position to restore to (from a prior checkpoint).</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        RollbackResult</span>
+<span class="sd">            Contains ``position`` — the restored token position.</span>
+
+<span class="sd">        Raises</span>
+<span class="sd">        ------</span>
+<span class="sd">        MlxKvConnectionError</span>
+<span class="sd">            If the server cannot be reached.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_rpc</span><span class="p">(</span><span class="s2">&quot;rollback&quot;</span><span class="p">,</span> <span class="p">{</span><span class="s2">&quot;cache_id&quot;</span><span class="p">:</span> <span class="n">cache_id</span><span class="p">,</span> <span class="s2">&quot;position&quot;</span><span class="p">:</span> <span class="n">position</span><span class="p">})</span>
+        <span class="k">return</span> <span class="n">RollbackResult</span><span class="p">(</span><span class="n">position</span><span class="o">=</span><span class="nb">int</span><span class="p">(</span><span class="n">result</span><span class="p">[</span><span class="s2">&quot;position&quot;</span><span class="p">]))</span></div>
+
+
+<div class="viewcode-block" id="MlxKvClient.evict">
+<a class="viewcode-back" href="../../_api/mlx_kv_client.html#mlx_kv_client.MlxKvClient.evict">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">evict</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cache_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">EvictResult</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Free GPU memory for a cache slot.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        cache_id:</span>
+<span class="sd">            Opaque cache handle to remove.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        EvictResult</span>
+<span class="sd">            Contains ``freed`` — the cache ID that was freed.</span>
+
+<span class="sd">        Raises</span>
+<span class="sd">        ------</span>
+<span class="sd">        MlxKvConnectionError</span>
+<span class="sd">            If the server cannot be reached.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_rpc</span><span class="p">(</span><span class="s2">&quot;evict&quot;</span><span class="p">,</span> <span class="p">{</span><span class="s2">&quot;cache_id&quot;</span><span class="p">:</span> <span class="n">cache_id</span><span class="p">})</span>
+        <span class="k">return</span> <span class="n">EvictResult</span><span class="p">(</span><span class="n">freed</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">result</span><span class="p">[</span><span class="s2">&quot;freed&quot;</span><span class="p">]))</span></div>
+
+
 <div class="viewcode-block" id="MlxKvClient.status">
 <a class="viewcode-back" href="../../_api/mlx_kv_client.html#mlx_kv_client.MlxKvClient.status">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">status</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">KVServerStatus</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the current KV cache status from ``GET /status``.</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the current KV cache status.</span>
 
 <span class="sd">        Returns</span>
 <span class="sd">        -------</span>
@@ -612,37 +931,40 @@
 <span class="sd">        MlxKvConnectionError</span>
 <span class="sd">            If the server cannot be reached.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">try</span><span class="p">:</span>
-            <span class="n">response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_http</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/status&quot;</span><span class="p">)</span>
-        <span class="k">except</span> <span class="n">httpx</span><span class="o">.</span><span class="n">TransportError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="n">MlxKvConnectionError</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_base_url</span><span class="p">,</span> <span class="n">exc</span><span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">exc</span>
-        <span class="n">response</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
-        <span class="k">return</span> <span class="n">_parse_status</span><span class="p">(</span><span class="n">cast</span><span class="p">(</span><span class="n">_StatusResponse</span><span class="p">,</span> <span class="n">response</span><span class="o">.</span><span class="n">json</span><span class="p">()))</span></div>
+        <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_rpc</span><span class="p">(</span><span class="s2">&quot;status&quot;</span><span class="p">,</span> <span class="p">{})</span>
+        <span class="k">return</span> <span class="n">_parse_status</span><span class="p">(</span><span class="n">result</span><span class="p">)</span></div>
 </div>
 
+
+
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># Async client</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
 
 
 <div class="viewcode-block" id="AsyncMlxKvClient">
 <a class="viewcode-back" href="../../_api/mlx_kv_client.html#mlx_kv_client.AsyncMlxKvClient">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">AsyncMlxKvClient</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Asynchronous HTTP client for mlx-kv-server.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Asynchronous Unix socket client for mlx-kv-server.</span>
+
+<span class="sd">    Each method opens a fresh connection, sends one request, reads the</span>
+<span class="sd">    response, then closes the connection.</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
-<span class="sd">    base_url:</span>
-<span class="sd">        Base URL of the running mlx-kv-server instance,</span>
-<span class="sd">        e.g. ``&quot;http://localhost:8080&quot;``.</span>
+<span class="sd">    socket_path:</span>
+<span class="sd">        Filesystem path to the Unix domain socket of the running</span>
+<span class="sd">        mlx-kv-server instance.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">base_url</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_base_url</span> <span class="o">=</span> <span class="n">base_url</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_http</span> <span class="o">=</span> <span class="n">httpx</span><span class="o">.</span><span class="n">AsyncClient</span><span class="p">(</span><span class="n">base_url</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_base_url</span><span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">socket_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_socket_path</span> <span class="o">=</span> <span class="n">socket_path</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_ids</span><span class="p">:</span> <span class="n">Iterator</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="n">count</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
 
 <div class="viewcode-block" id="AsyncMlxKvClient.aclose">
 <a class="viewcode-back" href="../../_api/mlx_kv_client.html#mlx_kv_client.AsyncMlxKvClient.aclose">[docs]</a>
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">aclose</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Close the underlying HTTP connection pool.&quot;&quot;&quot;</span>
-        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_http</span><span class="o">.</span><span class="n">aclose</span><span class="p">()</span></div>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;No-op. Connections are per-call and close themselves.&quot;&quot;&quot;</span></div>
 
 
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="fm">__aenter__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">AsyncMlxKvClient</span><span class="p">:</span>
@@ -656,10 +978,215 @@
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">aclose</span><span class="p">()</span>
 
+    <span class="c1"># ------------------------------------------------------------------</span>
+    <span class="c1"># Low-level transport</span>
+    <span class="c1"># ------------------------------------------------------------------</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_connect</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">asyncio</span><span class="o">.</span><span class="n">StreamReader</span><span class="p">,</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">StreamWriter</span><span class="p">]:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">return</span> <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">open_unix_connection</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_socket_path</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">OSError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">MlxKvConnectionError</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_socket_path</span><span class="p">,</span> <span class="n">exc</span><span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">exc</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_rpc</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">method</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">params</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+        <span class="n">req_id</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_ids</span><span class="p">)</span>
+        <span class="n">reader</span><span class="p">,</span> <span class="n">writer</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_connect</span><span class="p">()</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">payload</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">({</span><span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="n">req_id</span><span class="p">,</span> <span class="s2">&quot;method&quot;</span><span class="p">:</span> <span class="n">method</span><span class="p">,</span> <span class="s2">&quot;params&quot;</span><span class="p">:</span> <span class="n">params</span><span class="p">})</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+            <span class="n">writer</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">payload</span><span class="o">.</span><span class="n">encode</span><span class="p">())</span>
+            <span class="k">await</span> <span class="n">writer</span><span class="o">.</span><span class="n">drain</span><span class="p">()</span>
+            <span class="n">raw</span> <span class="o">=</span> <span class="k">await</span> <span class="n">reader</span><span class="o">.</span><span class="n">readline</span><span class="p">()</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">raw</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">OSError</span><span class="p">(</span><span class="s2">&quot;connection closed before response was received&quot;</span><span class="p">)</span>
+            <span class="n">response</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">raw</span><span class="p">)</span>
+            <span class="n">_check_error</span><span class="p">(</span><span class="n">response</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_socket_path</span><span class="p">)</span>
+            <span class="n">result</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="n">response</span><span class="p">[</span><span class="s2">&quot;result&quot;</span><span class="p">]</span>
+            <span class="k">return</span> <span class="n">result</span>
+        <span class="k">except</span> <span class="ne">OSError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">MlxKvConnectionError</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_socket_path</span><span class="p">,</span> <span class="n">exc</span><span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">exc</span>
+        <span class="k">finally</span><span class="p">:</span>
+            <span class="n">writer</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">await</span> <span class="n">writer</span><span class="o">.</span><span class="n">wait_closed</span><span class="p">()</span>
+            <span class="k">except</span> <span class="ne">OSError</span><span class="p">:</span>
+                <span class="k">pass</span>
+
+    <span class="c1"># ------------------------------------------------------------------</span>
+    <span class="c1"># Public API</span>
+    <span class="c1"># ------------------------------------------------------------------</span>
+
+<div class="viewcode-block" id="AsyncMlxKvClient.prefill">
+<a class="viewcode-back" href="../../_api/mlx_kv_client.html#mlx_kv_client.AsyncMlxKvClient.prefill">[docs]</a>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">prefill</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tokens</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span> <span class="n">cache_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">PrefillResult</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Feed tokens into the KV cache.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        tokens:</span>
+<span class="sd">            Token IDs to prefill.</span>
+<span class="sd">        cache_id:</span>
+<span class="sd">            Opaque cache handle. A new cache is created if not yet known.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        PrefillResult</span>
+<span class="sd">            Contains ``handle`` — the opaque cache reference.</span>
+
+<span class="sd">        Raises</span>
+<span class="sd">        ------</span>
+<span class="sd">        MlxKvConnectionError</span>
+<span class="sd">            If the server cannot be reached.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_rpc</span><span class="p">(</span><span class="s2">&quot;prefill&quot;</span><span class="p">,</span> <span class="p">{</span><span class="s2">&quot;tokens&quot;</span><span class="p">:</span> <span class="n">tokens</span><span class="p">,</span> <span class="s2">&quot;cache_id&quot;</span><span class="p">:</span> <span class="n">cache_id</span><span class="p">})</span>
+        <span class="k">return</span> <span class="n">PrefillResult</span><span class="p">(</span><span class="n">handle</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">result</span><span class="p">[</span><span class="s2">&quot;handle&quot;</span><span class="p">]))</span></div>
+
+
+<div class="viewcode-block" id="AsyncMlxKvClient.generate">
+<a class="viewcode-back" href="../../_api/mlx_kv_client.html#mlx_kv_client.AsyncMlxKvClient.generate">[docs]</a>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">generate</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">tokens</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span> <span class="n">cache_id</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">AsyncGenerator</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="kc">None</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Stream generated tokens from the KV cache.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        tokens:</span>
+<span class="sd">            Prompt tokens for this generation turn.</span>
+<span class="sd">        cache_id:</span>
+<span class="sd">            Opaque cache handle (must already exist from a prior prefill).</span>
+
+<span class="sd">        Yields</span>
+<span class="sd">        ------</span>
+<span class="sd">        int</span>
+<span class="sd">            Generated token IDs, one at a time, until the server sends</span>
+<span class="sd">            ``done``.</span>
+
+<span class="sd">        Raises</span>
+<span class="sd">        ------</span>
+<span class="sd">        MlxKvConnectionError</span>
+<span class="sd">            If the server cannot be reached or drops the connection mid-stream.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">req_id</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_ids</span><span class="p">)</span>
+        <span class="n">reader</span><span class="p">,</span> <span class="n">writer</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_connect</span><span class="p">()</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">payload</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span>
+                    <span class="p">{</span>
+                        <span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="n">req_id</span><span class="p">,</span>
+                        <span class="s2">&quot;method&quot;</span><span class="p">:</span> <span class="s2">&quot;generate&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;params&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;tokens&quot;</span><span class="p">:</span> <span class="n">tokens</span><span class="p">,</span> <span class="s2">&quot;cache_id&quot;</span><span class="p">:</span> <span class="n">cache_id</span><span class="p">},</span>
+                    <span class="p">}</span>
+                <span class="p">)</span>
+                <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+            <span class="n">writer</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">payload</span><span class="o">.</span><span class="n">encode</span><span class="p">())</span>
+            <span class="k">await</span> <span class="n">writer</span><span class="o">.</span><span class="n">drain</span><span class="p">()</span>
+            <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+                <span class="n">raw</span> <span class="o">=</span> <span class="k">await</span> <span class="n">reader</span><span class="o">.</span><span class="n">readline</span><span class="p">()</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">raw</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="n">MlxKvConnectionError</span><span class="p">(</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">_socket_path</span><span class="p">,</span>
+                        <span class="ne">OSError</span><span class="p">(</span><span class="s2">&quot;connection closed before generate completed&quot;</span><span class="p">),</span>
+                    <span class="p">)</span>
+                <span class="n">response</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">raw</span><span class="p">)</span>
+                <span class="n">_check_error</span><span class="p">(</span><span class="n">response</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_socket_path</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">response</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;done&quot;</span><span class="p">):</span>
+                    <span class="k">break</span>
+                <span class="k">yield</span> <span class="nb">int</span><span class="p">(</span><span class="n">response</span><span class="p">[</span><span class="s2">&quot;token&quot;</span><span class="p">])</span>
+        <span class="k">except</span> <span class="ne">OSError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">MlxKvConnectionError</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_socket_path</span><span class="p">,</span> <span class="n">exc</span><span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">exc</span>
+        <span class="k">finally</span><span class="p">:</span>
+            <span class="n">writer</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">await</span> <span class="n">writer</span><span class="o">.</span><span class="n">wait_closed</span><span class="p">()</span>
+            <span class="k">except</span> <span class="ne">OSError</span><span class="p">:</span>
+                <span class="k">pass</span></div>
+
+
+<div class="viewcode-block" id="AsyncMlxKvClient.checkpoint">
+<a class="viewcode-back" href="../../_api/mlx_kv_client.html#mlx_kv_client.AsyncMlxKvClient.checkpoint">[docs]</a>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">checkpoint</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cache_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">CheckpointResult</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Snapshot the current KV cache state.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        cache_id:</span>
+<span class="sd">            Opaque cache handle.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        CheckpointResult</span>
+<span class="sd">            Contains ``position`` — token count at checkpoint time.</span>
+
+<span class="sd">        Raises</span>
+<span class="sd">        ------</span>
+<span class="sd">        MlxKvConnectionError</span>
+<span class="sd">            If the server cannot be reached.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_rpc</span><span class="p">(</span><span class="s2">&quot;checkpoint&quot;</span><span class="p">,</span> <span class="p">{</span><span class="s2">&quot;cache_id&quot;</span><span class="p">:</span> <span class="n">cache_id</span><span class="p">})</span>
+        <span class="k">return</span> <span class="n">CheckpointResult</span><span class="p">(</span><span class="n">position</span><span class="o">=</span><span class="nb">int</span><span class="p">(</span><span class="n">result</span><span class="p">[</span><span class="s2">&quot;position&quot;</span><span class="p">]))</span></div>
+
+
+<div class="viewcode-block" id="AsyncMlxKvClient.rollback">
+<a class="viewcode-back" href="../../_api/mlx_kv_client.html#mlx_kv_client.AsyncMlxKvClient.rollback">[docs]</a>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">rollback</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cache_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">position</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">RollbackResult</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Restore the KV cache to a prior position.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        cache_id:</span>
+<span class="sd">            Opaque cache handle.</span>
+<span class="sd">        position:</span>
+<span class="sd">            Token position to restore to (from a prior checkpoint).</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        RollbackResult</span>
+<span class="sd">            Contains ``position`` — the restored token position.</span>
+
+<span class="sd">        Raises</span>
+<span class="sd">        ------</span>
+<span class="sd">        MlxKvConnectionError</span>
+<span class="sd">            If the server cannot be reached.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_rpc</span><span class="p">(</span>
+            <span class="s2">&quot;rollback&quot;</span><span class="p">,</span> <span class="p">{</span><span class="s2">&quot;cache_id&quot;</span><span class="p">:</span> <span class="n">cache_id</span><span class="p">,</span> <span class="s2">&quot;position&quot;</span><span class="p">:</span> <span class="n">position</span><span class="p">}</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">RollbackResult</span><span class="p">(</span><span class="n">position</span><span class="o">=</span><span class="nb">int</span><span class="p">(</span><span class="n">result</span><span class="p">[</span><span class="s2">&quot;position&quot;</span><span class="p">]))</span></div>
+
+
+<div class="viewcode-block" id="AsyncMlxKvClient.evict">
+<a class="viewcode-back" href="../../_api/mlx_kv_client.html#mlx_kv_client.AsyncMlxKvClient.evict">[docs]</a>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">evict</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cache_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">EvictResult</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Free GPU memory for a cache slot.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        cache_id:</span>
+<span class="sd">            Opaque cache handle to remove.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        EvictResult</span>
+<span class="sd">            Contains ``freed`` — the cache ID that was freed.</span>
+
+<span class="sd">        Raises</span>
+<span class="sd">        ------</span>
+<span class="sd">        MlxKvConnectionError</span>
+<span class="sd">            If the server cannot be reached.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_rpc</span><span class="p">(</span><span class="s2">&quot;evict&quot;</span><span class="p">,</span> <span class="p">{</span><span class="s2">&quot;cache_id&quot;</span><span class="p">:</span> <span class="n">cache_id</span><span class="p">})</span>
+        <span class="k">return</span> <span class="n">EvictResult</span><span class="p">(</span><span class="n">freed</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">result</span><span class="p">[</span><span class="s2">&quot;freed&quot;</span><span class="p">]))</span></div>
+
+
 <div class="viewcode-block" id="AsyncMlxKvClient.status">
 <a class="viewcode-back" href="../../_api/mlx_kv_client.html#mlx_kv_client.AsyncMlxKvClient.status">[docs]</a>
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">status</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">KVServerStatus</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the current KV cache status from ``GET /status``.</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the current KV cache status.</span>
 
 <span class="sd">        Returns</span>
 <span class="sd">        -------</span>
@@ -671,12 +1198,8 @@
 <span class="sd">        MlxKvConnectionError</span>
 <span class="sd">            If the server cannot be reached.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">try</span><span class="p">:</span>
-            <span class="n">response</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_http</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/status&quot;</span><span class="p">)</span>
-        <span class="k">except</span> <span class="n">httpx</span><span class="o">.</span><span class="n">TransportError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="n">MlxKvConnectionError</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_base_url</span><span class="p">,</span> <span class="n">exc</span><span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">exc</span>
-        <span class="n">response</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
-        <span class="k">return</span> <span class="n">_parse_status</span><span class="p">(</span><span class="n">cast</span><span class="p">(</span><span class="n">_StatusResponse</span><span class="p">,</span> <span class="n">response</span><span class="o">.</span><span class="n">json</span><span class="p">()))</span></div>
+        <span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_rpc</span><span class="p">(</span><span class="s2">&quot;status&quot;</span><span class="p">,</span> <span class="p">{})</span>
+        <span class="k">return</span> <span class="n">_parse_status</span><span class="p">(</span><span class="n">result</span><span class="p">)</span></div>
 </div>
 
 </pre></div>
