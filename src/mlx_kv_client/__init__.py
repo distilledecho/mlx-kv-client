@@ -13,6 +13,7 @@ from ._client import (
     KVServerStatus,
     MlxKvClient,
     MlxKvConnectionError,
+    MlxKvServerError,
     PrefillResult,
     RollbackResult,
 )
@@ -26,6 +27,7 @@ __all__ = [
     "KVServerStatus",
     "MlxKvClient",
     "MlxKvConnectionError",
+    "MlxKvServerError",
     "PrefillResult",
     "RollbackResult",
 ]

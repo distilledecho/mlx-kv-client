@@ -24,6 +24,7 @@ __all__ = [
     "KVServerStatus",
     "MlxKvClient",
     "MlxKvConnectionError",
+    "MlxKvServerError",
     "PrefillResult",
     "RollbackResult",
 ]
@@ -49,6 +50,23 @@ class MlxKvConnectionError(Exception):
         super().__init__(f"Cannot reach mlx-kv-server at {socket_path!r}: {cause}")
         self.socket_path = socket_path
         self.cause = cause
+
+
+class MlxKvServerError(Exception):
+    """Raised when mlx-kv-server returns an error frame.
+
+    Attributes
+    ----------
+    socket_path:
+        The Unix socket path of the server that returned the error.
+    message:
+        The error message string returned by the server.
+    """
+
+    def __init__(self, socket_path: str, message: str) -> None:
+        super().__init__(f"server error at {socket_path!r}: {message}")
+        self.socket_path = socket_path
+        self.message = message
 
 
 # ---------------------------------------------------------------------------
@@ -167,9 +185,8 @@ class _SocketReader:
             chunk = self._sock.recv(4096)
             if not chunk:
                 if self._buf:
-                    line, self._buf = bytes(self._buf), bytearray()
-                    return line
-                raise OSError("connection closed before response was received")
+                    raise OSError("connection closed mid-line")
+                return b""
             self._buf.extend(chunk)
         idx = self._buf.index(b"\n")
         line = bytes(self._buf[:idx])
@@ -177,9 +194,9 @@ class _SocketReader:
         return line
 
 
-def _check_error(response: dict[str, Any]) -> None:
+def _check_error(response: dict[str, Any], socket_path: str) -> None:
     if "error" in response:
-        raise RuntimeError(f"server error: {response['error']}")
+        raise MlxKvServerError(socket_path, str(response["error"]))
 
 
 def _parse_status(result: dict[str, Any]) -> KVServerStatus:
@@ -257,8 +274,10 @@ class MlxKvClient:
             )
             sock.sendall(payload.encode())
             raw = reader.readline()
+            if not raw:
+                raise OSError("connection closed before response was received")
             response: dict[str, Any] = json.loads(raw)
-            _check_error(response)
+            _check_error(response, self._socket_path)
             result: dict[str, Any] = response["result"]
             return result
         except OSError as exc:
@@ -330,8 +349,10 @@ class MlxKvClient:
             sock.sendall(payload.encode())
             while True:
                 raw = reader.readline()
+                if not raw:
+                    raise OSError("connection closed before generate completed")
                 response: dict[str, Any] = json.loads(raw)
-                _check_error(response)
+                _check_error(response, self._socket_path)
                 if response.get("done"):
                     break
                 yield int(response["token"])
@@ -483,7 +504,7 @@ class AsyncMlxKvClient:
             if not raw:
                 raise OSError("connection closed before response was received")
             response: dict[str, Any] = json.loads(raw)
-            _check_error(response)
+            _check_error(response, self._socket_path)
             result: dict[str, Any] = response["result"]
             return result
         except OSError as exc:
@@ -568,7 +589,7 @@ class AsyncMlxKvClient:
                         OSError("connection closed before generate completed"),
                     )
                 response: dict[str, Any] = json.loads(raw)
-                _check_error(response)
+                _check_error(response, self._socket_path)
                 if response.get("done"):
                     break
                 yield int(response["token"])

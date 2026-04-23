@@ -5,9 +5,10 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import pathlib
 import socket
 import threading
-from collections.abc import Callable
+from collections import deque
 from typing import Any
 
 import pytest
@@ -19,6 +20,7 @@ from mlx_kv_client import (
     KVServerStatus,
     MlxKvClient,
     MlxKvConnectionError,
+    MlxKvServerError,
     PrefillResult,
     RollbackResult,
 )
@@ -26,8 +28,6 @@ from mlx_kv_client import (
 # ---------------------------------------------------------------------------
 # Fake server
 # ---------------------------------------------------------------------------
-
-ResponseFn = Callable[[dict[str, Any]], list[dict[str, Any]]]
 
 
 class _FakeServer:
@@ -41,7 +41,7 @@ class _FakeServer:
     def __init__(self, path: str) -> None:
         self.path = path
         self.requests: list[dict[str, Any]] = []
-        self._responses: list[list[dict[str, Any]]] = []
+        self._responses: deque[list[dict[str, Any]]] = deque()
         self._lock = threading.Lock()
         self._sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         self._sock.bind(path)
@@ -77,7 +77,7 @@ class _FakeServer:
                     req: dict[str, Any] = json.loads(raw)
                     with self._lock:
                         self.requests.append(req)
-                        frames = self._responses.pop(0) if self._responses else []
+                        frames = self._responses.popleft() if self._responses else []
                     for frame in frames:
                         conn.sendall((json.dumps(frame) + "\n").encode())
         finally:
@@ -92,7 +92,7 @@ class _FakeServer:
 
 
 @pytest.fixture()
-def server(tmp_path: Any) -> Any:
+def server(tmp_path: pathlib.Path) -> Any:
     s = _FakeServer(str(tmp_path / "mlx_kv.sock"))
     yield s
     s.close()
@@ -176,6 +176,23 @@ def test_generate_sends_correct_request(server: _FakeServer) -> None:
     assert req["method"] == "generate"
     assert req["params"]["tokens"] == [5, 6, 7]
     assert req["params"]["cache_id"] == "c2"
+
+
+def test_generate_mid_stream_error_raises_server_error(server: _FakeServer) -> None:
+    rid = 1
+    server.push(
+        {"id": rid, "token": 100},
+        {"id": rid, "error": "cache evicted mid-generate"},
+    )
+    with MlxKvClient(server.path) as client:
+        gen = client.generate([1, 2], "c1")
+        first = next(gen)
+        assert first == 100
+        with pytest.raises(MlxKvServerError) as exc_info:
+            next(gen)
+
+    assert exc_info.value.message == "cache evicted mid-generate"
+    assert server.path in str(exc_info.value)
 
 
 def test_checkpoint_returns_typed_result(server: _FakeServer) -> None:
@@ -273,13 +290,48 @@ def test_status_is_frozen(server: _FakeServer) -> None:
         result.cache_used_tokens = 0  # type: ignore[misc]
 
 
-def test_connection_error_raises_typed_exception(tmp_path: Any) -> None:
+def test_server_error_raises_typed_exception(server: _FakeServer) -> None:
+    server.push({"id": 1, "error": "cache not found: 'c99'"})
+    with MlxKvClient(server.path) as client:
+        with pytest.raises(MlxKvServerError) as exc_info:
+            client.status()
+
+    assert exc_info.value.message == "cache not found: 'c99'"
+    assert exc_info.value.socket_path == server.path
+    assert server.path in str(exc_info.value)
+
+
+def test_connection_error_raises_typed_exception(tmp_path: pathlib.Path) -> None:
     missing = str(tmp_path / "no_such.sock")
     client = MlxKvClient(missing)
     with pytest.raises(MlxKvConnectionError) as exc_info:
         client.status()
     assert missing in str(exc_info.value)
     assert exc_info.value.socket_path == missing
+    assert isinstance(exc_info.value.cause, OSError)
+
+
+def test_truncated_response_raises_connection_error(tmp_path: pathlib.Path) -> None:
+    """Server closes mid-line (no newline): MlxKvConnectionError must be raised."""
+    sock_path = str(tmp_path / "trunc.sock")
+    srv = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    srv.bind(sock_path)
+    srv.listen(1)
+
+    def _serve() -> None:
+        conn, _ = srv.accept()
+        conn.sendall(b'{"id": 1, "res')  # truncated — no newline
+        conn.close()
+
+    threading.Thread(target=_serve, daemon=True).start()
+
+    client = MlxKvClient(sock_path)
+    with pytest.raises(MlxKvConnectionError) as exc_info:
+        client.status()
+
+    srv.close()
+    # On Linux the kernel may deliver ECONNRESET (RST) instead of a clean EOF,
+    # so both ConnectionResetError and our explicit "mid-line" OSError are valid.
     assert isinstance(exc_info.value.cause, OSError)
 
 
@@ -311,6 +363,26 @@ def test_async_generate_yields_tokens(server: _FakeServer) -> None:
             return [t async for t in client.generate([1, 2], "c1")]
 
     assert asyncio.run(_run()) == [100, 200]
+
+
+def test_async_generate_mid_stream_error_raises_server_error(
+    server: _FakeServer,
+) -> None:
+    async def _run() -> None:
+        rid = 1
+        server.push(
+            {"id": rid, "token": 42},
+            {"id": rid, "error": "gpu oom"},
+        )
+        async with AsyncMlxKvClient(server.path) as client:
+            gen = client.generate([1], "c1")
+            first = await gen.__anext__()
+            assert first == 42
+            with pytest.raises(MlxKvServerError) as exc_info:
+                await gen.__anext__()
+        assert exc_info.value.message == "gpu oom"
+
+    asyncio.run(_run())
 
 
 def test_async_checkpoint_returns_typed_result(server: _FakeServer) -> None:
@@ -359,7 +431,21 @@ def test_async_status_returns_typed_dataclass(server: _FakeServer) -> None:
     assert result.model == "mlx-community/some-model"
 
 
-def test_async_connection_error_raises_typed_exception(tmp_path: Any) -> None:
+def test_async_server_error_raises_typed_exception(server: _FakeServer) -> None:
+    async def _run() -> None:
+        server.push({"id": 1, "error": "bad params: missing cache_id"})
+        async with AsyncMlxKvClient(server.path) as client:
+            with pytest.raises(MlxKvServerError) as exc_info:
+                await client.prefill([1, 2], "c1")
+        assert exc_info.value.message == "bad params: missing cache_id"
+        assert exc_info.value.socket_path == server.path
+
+    asyncio.run(_run())
+
+
+def test_async_connection_error_raises_typed_exception(
+    tmp_path: pathlib.Path,
+) -> None:
     async def _run() -> None:
         missing = str(tmp_path / "no_such.sock")
         async with AsyncMlxKvClient(missing) as client:
