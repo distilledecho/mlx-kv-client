@@ -2,14 +2,15 @@
 
 ## What this repo is
 
-A thin, typed Python HTTP client for `mlx-kv-server`. Published to PyPI.
+A thin, typed Python Unix socket client for `mlx-kv-server`. Published to PyPI.
 Consumed by `kai-daemon` to drive all local inference.
 
 ## Role in the system
 
 `mlx-kv-server` is the inference server running on bare-metal Apple Silicon.
-It exposes five primitives over HTTP. This library wraps those primitives in a
-typed Python interface so `kai-daemon` never speaks raw HTTP to the server.
+It exposes five primitives over a Unix socket using NDJSON wire protocol. This
+library wraps those primitives in a typed Python interface so `kai-daemon` never
+speaks Unix socket NDJSON to the server.
 
 ## What depends on this repo
 
@@ -85,18 +86,18 @@ problem. `kai-daemon` decides how to handle failures — this library just repor
 them clearly.
 
 **No business logic.** This library is a transport layer. It does not know what
-a workflow is, what a fascination is, or what the daemon does. It speaks HTTP
-to `mlx-kv-server` and hands back the result.
+a workflow is, what a fascination is, or what the daemon does. It speaks Unix
+socket NDJSON to `mlx-kv-server` and hands back the result.
 
 ## Acceptance criteria
 
-- [ ] All five primitives wrapped with typed inputs and outputs
+- [x] All five primitives wrapped with typed inputs and outputs
 - [x] `status()` wrapped with typed output matching `/status` response schema
-- [ ] Sync and async variants for all six methods
+- [x] Sync and async variants for all six methods
 - [x] Sync and async variants for `status()`
 - [x] Connection errors raise typed exceptions, never silently fail
-- [ ] Pyright strict mode passes
-- [ ] Sphinx docs cover all public API
+- [x] Pyright strict mode passes
+- [x] Sphinx docs cover all public API
 
 ## GitHub issue hygiene
 
