@@ -40,8 +40,7 @@ jobs:
     uses: ./.github/workflows/_pypi.yml
     permissions:
       id-token: write
-    secrets:
-      PYPI_API_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
+    secrets: inherit
   
   release:
     needs: [dist, test, docs]
